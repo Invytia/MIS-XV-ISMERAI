@@ -134,7 +134,6 @@ section::after{content:'';position:absolute;width:300px;height:300px;border-radi
 /* Paleta */
 .palette{display:flex;justify-content:center;gap:26px;margin-top:30px}
 .sw{width:62px;height:62px;border-radius:50%;border:2px solid rgba(255,255,255,.75);box-shadow:0 6px 14px rgba(0,0,0,.25);animation:glow 3.2s ease-in-out infinite}
-.sw.g{animation-delay:1.2s}
 @keyframes glow{50%{box-shadow:0 6px 14px rgba(0,0,0,.25),0 0 22px 4px rgba(243,224,176,.6)}}
 .sw-n{font-size:11px;letter-spacing:1px;margin-top:10px;color:#f0dcda}
 
@@ -153,6 +152,7 @@ section::after{content:'';position:absolute;width:300px;height:300px;border-radi
 .inp:disabled{color:var(--mulberry);font-weight:500;opacity:1;-webkit-text-fill-color:var(--mulberry)}
 select.inp{appearance:none;-webkit-appearance:none;text-align-last:center;cursor:pointer}
 textarea.inp{min-height:80px;resize:vertical}
+.note{font-size:12px;color:var(--muted);margin-top:-6px;margin-bottom:14px}
 
 /* Lightbox */
 #lb{position:fixed;inset:0;background:rgba(40,12,20,.94);display:none;align-items:center;justify-content:center;z-index:3000;padding:20px;cursor:zoom-out}
@@ -212,7 +212,7 @@ textarea.inp{min-height:80px;resize:vertical}
       <span class="glint" style="--s:10px;--d:1.8s;bottom:0;left:22%"></span>
     </div>
     <div class="orn"><i></i></div>
-    <p class="serif">Gracias por ser parte de mi historia, por llenar mi mundo de luz y acompañarme esta noche mágica que guardaré por siempre en mi corazón.</p>
+    <p class="serif">Con la bendición de Dios y el amor de mi familia, celebro la alegría de cumplir quince años. ¡Tu presencia hará este día aún más especial!</p>
   </div>
   <figure class="photo reveal z"><img src="assets/1.jpg" alt="Ismerai">
     <span class="glint" style="--s:20px;--d:.4s;top:-10px;right:-8px"></span>
@@ -286,10 +286,9 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="kicker">Código de vestimenta</div>
     <div class="h2">Formal</div>
     <div class="orn"><i></i></div>
-    <p class="serif" style="font-size:21px">Con cariño te pedimos reservar el palo de rosa y el dorado, colores de la quinceañera.</p>
+    <p class="serif" style="font-size:21px">Con cariño te pedimos reservar el color palo de rosa, color de la quinceañera.</p>
     <div class="palette">
       <div><div class="sw" style="background:#D4A5A5"></div><div class="sw-n">Palo de rosa</div></div>
-      <div><div class="sw g" style="background:#C9A96E"></div><div class="sw-n">Dorado</div></div>
     </div>
   </div>
   <figure class="photo reveal z"><img src="assets/5.jpg" alt="Vestimenta">
@@ -374,6 +373,7 @@ textarea.inp{min-height:80px;resize:vertical}
     <div class="field"><input id="rsvp-name" class="inp" type="text" placeholder="Tu nombre y apellido" autocomplete="name"></div>
     <div class="field"><select id="rsvp-status" class="inp"><option value="" disabled selected>¿Nos acompañarás?</option><option value="yes">Con gusto asistiré</option><option value="no">No me será posible asistir</option></select></div>
     <div class="field"><select id="rsvp-guests" class="inp" style="display:none"></select></div>
+    <p class="note" id="rsvp-note" style="display:none"></p>
     <button class="btn" onclick="sendRSVP()">Confirmar por WhatsApp</button>
 
     <div class="orn" style="margin-top:56px"><i></i></div>
@@ -495,40 +495,59 @@ document.querySelectorAll('.photo').forEach(p=>{
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.getElementById('lb').classList.remove('show')});
 
-/* ---------- Pases nominales Invytia (?id=n) ---------- */
+/* ---------- Pases numerados Invytia (?p=n) ----------
+   Ejemplos:  tu-invitacion.com/?p=4   → boleto con 4 pases
+              tu-invitacion.com/?p=2&n=Familia%20Lopez → boleto con nombre (opcional)
+   Sin ?p= la invitación funciona normal, sin boleto, con el máximo por defecto. */
 const PHONE="522229103606";
+const DEFAULT_PASES=10;   // máximo permitido si el enlace no trae ?p=
+const MAX_PASES=50;       // tope de seguridad
 const dbInvitados={
   // "1": { nombre: "Familia Ejemplo", pases: 3 },
 };
 const qs=new URLSearchParams(location.search);
-const pid=qs.get('id'), pp=qs.get('p')||qs.get('pases');
-let pases=10, nombre="Invitado especial", conPase=false;
+const pid=qs.get('id');
+const rawP=qs.get('p')||qs.get('pases');
+const parsedP=/^\d{1,3}$/.test((rawP||'').trim())?parseInt(rawP,10):NaN;
+const qName=(qs.get('n')||qs.get('nombre')||'').trim().slice(0,60);
+
+let pases=DEFAULT_PASES, nombre="Invitado especial", conPase=false;
 if(pid&&dbInvitados[pid]){
   pases=dbInvitados[pid].pases;nombre=dbInvitados[pid].nombre;conPase=true;
   const i=document.getElementById('rsvp-name');i.value=nombre;i.disabled=true;
-}else if(pp&&!isNaN(pp)&&parseInt(pp)>0){pases=parseInt(pp);conPase=true}
+}else if(!isNaN(parsedP)&&parsedP>0){
+  pases=Math.min(parsedP,MAX_PASES);conPase=true;
+  if(qName){nombre=qName;const i=document.getElementById('rsvp-name');i.value=qName}
+}
 if(conPase){
   document.getElementById('pases').style.display='block';
   document.getElementById('t-count').textContent=pases;
   document.getElementById('t-name').textContent=nombre;
 }
-const st=document.getElementById('rsvp-status'),gs=document.getElementById('rsvp-guests');
+
+const st=document.getElementById('rsvp-status'),gs=document.getElementById('rsvp-guests'),nt=document.getElementById('rsvp-note');
 st.addEventListener('change',e=>{
   if(e.target.value==='yes'){
     gs.style.display='block';
     let o='<option value="" disabled selected>¿Cuántas personas asisten?</option>';
+    // Puede confirmar desde 1 hasta el total asignado, nunca más
     for(let i=1;i<=pases;i++)o+=`<option value="${i}">${i} persona${i>1?'s':''}</option>`;
     gs.innerHTML=o;
-  }else{gs.style.display='none';gs.value=''}
+    if(conPase){nt.textContent=`Tienes ${pases} pase${pases>1?'s':''} asignado${pases>1?'s':''}. Puedes confirmar menos, pero no más.`;nt.style.display='block'}
+  }else{gs.style.display='none';gs.value='';nt.style.display='none'}
 });
 
 /* ---------- WhatsApp ---------- */
 function sendRSVP(){
-  const n=document.getElementById('rsvp-name').value.trim(),s=st.value,g=gs.value;
+  const n=document.getElementById('rsvp-name').value.trim(),s=st.value,g=parseInt(gs.value,10);
   if(!n||!s){alert('Escribe tu nombre y elige si nos acompañarás.');return}
-  if(s==='yes'&&!g){alert('Indica cuántas personas asistirán.');return}
+  if(s==='yes'){
+    if(!g){alert('Indica cuántas personas asistirán.');return}
+    if(g<1||g>pases){alert(`Tu invitación tiene ${pases} pase${pases>1?'s':''} asignado${pases>1?'s':''}. No puedes confirmar más personas.`);return}
+  }
+  const asign=conPase?` (de ${pases} pase${pases>1?'s':''} asignado${pases>1?'s':''})`:'';
   const m=s==='yes'
-   ?`¡Hola! Soy ${n}. Sí, confirmo con gusto mi asistencia a los XV años de Ismerai. Seremos ${g} persona(s) en total.`
+   ?`¡Hola! Soy ${n}. Sí, confirmo con gusto mi asistencia a los XV años de Ismerai. Seremos ${g} persona(s) en total${asign}.`
    :`¡Hola! Soy ${n}. Lamentablemente no me será posible asistir a los XV años de Ismerai. Agradezco mucho la invitación.`;
   window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(m)}`,'_blank');
 }
